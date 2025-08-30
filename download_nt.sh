@@ -107,9 +107,12 @@ SDL2_IMAGE_RELEASE=https://github.com/libsdl-org/SDL_image/releases/download/rel
 [ "$SDL2_TTF" == "true" ]   && cp ./SDL2_ttf-${SDL2_TTF_VERSION}/${SDL2_ARCH}/bin/SDL2_ttf.dll        ../build/
 [ "$SDL2_IMAGE" == "true" ] && cp ./SDL2_image-${SDL2_IMAGE_VERSION}/${SDL2_ARCH}/bin/SDL2_image.dll  ../build/
 
-[ "$SDL2" == "true" ]       && cp -r ./SDL2-${SDL2_VERSION}/${SDL2_ARCH}/{include,lib}                ../external/
-[ "$SDL2_TTF" == "true" ]   && cp -r ./SDL2_ttf-${SDL2_TTF_VERSION}/${SDL2_ARCH}/{include,lib}        ../external/
-[ "$SDL2_IMAGE" == "true" ] && cp -r ./SDL2_image-${SDL2_IMAGE_VERSION}/${SDL2_ARCH}/{include,lib}    ../external/
+[ "$SDL2" == "true" ]       && cp -r ./SDL2-${SDL2_VERSION}/${SDL2_ARCH}/include                      ../external/
+[ "$SDL2" == "true" ]       && cp -r ./SDL2-${SDL2_VERSION}/${SDL2_ARCH}/lib                          ../external/
+[ "$SDL2_TTF" == "true" ]   && cp -r ./SDL2_ttf-${SDL2_TTF_VERSION}/${SDL2_ARCH}/include              ../external/
+[ "$SDL2_TTF" == "true" ]   && cp -r ./SDL2_ttf-${SDL2_TTF_VERSION}/${SDL2_ARCH}/lib                  ../external/
+[ "$SDL2_IMAGE" == "true" ] && cp -r ./SDL2_image-${SDL2_IMAGE_VERSION}/${SDL2_ARCH}/include          ../external/
+[ "$SDL2_IMAGE" == "true" ] && cp -r ./SDL2_image-${SDL2_IMAGE_VERSION}/${SDL2_ARCH}/lib              ../external/
 
 # ------------------------------------------
 # CURL
@@ -124,5 +127,6 @@ echo
     print_banner "Unpacking CURL"   && unzip -n curl-$CURL_VERSION-win64-mingw.zip
 
     cp ./curl-$CURL_VERSION-win64-mingw/bin/libcurl-x64.dll   ../build/
-    cp -r ./curl-$CURL_VERSION-win64-mingw/{include,lib}      ../external/
+    cp -r ./curl-$CURL_VERSION-win64-mingw/include            ../external/
+    cp -r ./curl-$CURL_VERSION-win64-mingw/lib                ../external/
 fi
