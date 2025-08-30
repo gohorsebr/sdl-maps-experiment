@@ -126,7 +126,8 @@ echo
     print_banner "Downloading CURL" && download_from "$CURL_RELEASE"
     print_banner "Unpacking CURL"   && unzip -n curl-$CURL_VERSION-win64-mingw.zip
 
-    cp ./curl-$CURL_VERSION-win64-mingw/bin/libcurl-x64.dll   ../build/
-    cp -r ./curl-$CURL_VERSION-win64-mingw/include            ../external/
-    cp -r ./curl-$CURL_VERSION-win64-mingw/lib                ../external/
+    cp ./curl-$CURL_VERSION-win64-mingw/bin/libcurl-x64.dll       ../build/
+    cp ./curl-$CURL_VERSION-win64-mingw/bin/curl-ca-bundle.crt    ../build/
+    cp -r ./curl-$CURL_VERSION-win64-mingw/include                ../external/
+    cp -r ./curl-$CURL_VERSION-win64-mingw/lib                    ../external/
 fi

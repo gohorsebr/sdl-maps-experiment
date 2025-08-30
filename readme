@@ -1,3 +1,5 @@
 ### nt
 
 ./download_nt.sh --curl --sdl2 --sdl2-image
+make
+make run
