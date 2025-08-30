@@ -34,7 +34,7 @@
 #define TILE_SIZE 256
 #define MIN_ZOOM 1
 #define MAX_ZOOM 22
-#define INITIAL_ZOOM 3
+#define INITIAL_ZOOM 1
 
 // bage coord
 #define INITIAL_LONGITUDE -54.10793
@@ -58,7 +58,8 @@ static const struct provider_t PROVIDERS[] = {
     {"carto_light", "https://d.basemaps.cartocdn.com/light_nolabels/%d/%d/%d.png", 0},
     {"carto_dark", "https://d.basemaps.cartocdn.com/dark_nolabels/%d/%d/%d.png", 0},
 };
-static const size_t SIZE_PROVIDER = sizeof(PROVIDERS) / sizeof(PROVIDERS[0]);
+#define SIZE_PROVIDER (sizeof(PROVIDERS) / sizeof(PROVIDERS[0]))
+// static const size_t SIZE_PROVIDER = sizeof(PROVIDERS) / sizeof(PROVIDERS[0]);
 
 // ----------------------------------------------------------------------------
 // Utils
@@ -258,6 +259,89 @@ static int downloader_thread(void *arg) {
 }
 
 // ----------------------------------------------------------------------------
+// Texture cache
+// ----------------------------------------------------------------------------
+
+typedef struct TileCache {
+    int z, x, y;
+    SDL_Texture *texture;
+    struct TileCache *next;
+} TileCache;
+
+static TileCache *TILE_CACHE[SIZE_PROVIDER];
+
+static void init_tile_cache() {
+    for (int i = 0; i < SIZE_PROVIDER; i++) {
+        TILE_CACHE[i] = NULL;
+    }
+}
+
+static void cleanup_tile_cache() {
+    for (int i = 0; i < SIZE_PROVIDER; i++) {
+        TileCache *p = TILE_CACHE[i];
+
+        while (p != NULL) {
+            TileCache *n = p->next;
+            p->next = NULL;
+            SDL_DestroyTexture(p->texture);
+            free(p);
+            p = n;
+        }
+
+        TILE_CACHE[i] = NULL;
+    }
+}
+
+static SDL_Texture *get_tile_texture(SDL_Renderer *renderer, int provider, int zoom, int x, int y) {
+    TileCache *p = TILE_CACHE[provider];
+
+    do {
+        if (p == NULL) {
+            break;
+        } else if (p->z == zoom && p->x == x && p->y == y) {
+            // printf("[cache hit] %d (%d, %d), %x, >%x\n", zoom, x, y, p->texture, p->next);
+            return p->texture;
+        }
+    } while ((p = p->next) != NULL);
+
+    // Cache path: tilecache/provider/z/x/y.png
+    char tile_path[512];
+    snprintf(tile_path, sizeof(tile_path), "%s%c%s%c%d%c%d%c%d.png",
+             CACHE_ROOT, PATH_SEP, PROVIDERS[provider].type, PATH_SEP, zoom, PATH_SEP, x, PATH_SEP, y);
+
+    if (!file_exists(tile_path)) {
+        ensure_cache_dir(provider, zoom, x);
+        enqueue_job(provider, zoom, x, y, tile_path);
+    }
+
+    SDL_Texture *texture = IMG_LoadTexture(renderer, tile_path);
+    if (!texture) {
+        // printf("[missing] %d (%d, %d)\n", zoom, x, y);
+        return NULL;
+    }
+
+    TileCache *entry = (TileCache *)malloc(sizeof(TileCache));
+    entry->z = zoom;
+    entry->x = x;
+    entry->y = y;
+    entry->texture = texture;
+    entry->next = NULL;
+
+    if (TILE_CACHE[provider] == NULL) {
+        TILE_CACHE[provider] = entry;
+    } else {
+        TileCache *c = TILE_CACHE[provider];
+        while (c->next != NULL) {
+            c = c->next;
+        }
+        c->next = entry;
+    }
+    // printf("[cache miss] %d (%d, %d)\n", zoom, x, y);
+
+    return texture;
+}
+
+// ----------------------------------------------------------------------------
 // Main
 // ----------------------------------------------------------------------------
 
@@ -278,6 +362,8 @@ int main(int argc, char **argv) {
         fprintf(stderr, "curl_global_init failed\n");
         return 1;
     }
+
+    init_tile_cache();
 
     // downloader thread
     job_mutex = SDL_CreateMutex();
@@ -431,17 +517,7 @@ int main(int argc, char **argv) {
                     continue;
                 int wy = ty;
 
-                // Cache path: tilecache/provider/z/x/y.png
-                char tile_path[512];
-                snprintf(tile_path, sizeof(tile_path), "%s%c%s%c%d%c%d%c%d.png",
-                         CACHE_ROOT, PATH_SEP, PROVIDERS[provider].type, PATH_SEP, zoom, PATH_SEP, wx, PATH_SEP, wy);
-
-                if (!file_exists(tile_path)) {
-                    ensure_cache_dir(provider, zoom, wx);
-                    enqueue_job(provider, zoom, wx, wy, tile_path);
-                }
-
-                SDL_Texture *texture = IMG_LoadTexture(renderer, tile_path);
+                SDL_Texture *texture = get_tile_texture(renderer, provider, zoom, wx, wy);
                 if (!texture) {
                     // Draw a placeholder if missing
                     SDL_Rect r = {(int)tile_origin_x, (int)tile_origin_y, TILE_SIZE, TILE_SIZE};
@@ -450,11 +526,10 @@ int main(int argc, char **argv) {
                     SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
                     SDL_RenderDrawRect(renderer, &r);
                     continue;
+                } else {
+                    SDL_Rect dst = {(int)tile_origin_x, (int)tile_origin_y, TILE_SIZE, TILE_SIZE};
+                    SDL_RenderCopy(renderer, texture, NULL, &dst);
                 }
-
-                SDL_Rect dst = {(int)tile_origin_x, (int)tile_origin_y, TILE_SIZE, TILE_SIZE};
-                SDL_RenderCopy(renderer, texture, NULL, &dst);
-                SDL_DestroyTexture(texture);
             }
         }
 
@@ -483,6 +558,7 @@ int main(int argc, char **argv) {
     SDL_DestroyCond(job_cond);
 
     // cleanup rest
+    cleanup_tile_cache();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     IMG_Quit();
