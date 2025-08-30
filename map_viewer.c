@@ -130,7 +130,7 @@ static int download_tile(int provider, int z, int x, int y, const char *out_path
     }
 
 #ifdef _WIN32
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "build" PATH_SEP "curl-ca-bundle.crt");
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "build\\curl-ca-bundle.crt");
 #endif
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, CURL_USER_AGENT);
