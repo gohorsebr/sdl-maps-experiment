@@ -540,7 +540,10 @@ int main(int argc, char **argv) {
         static Uint32 lastPrint = 0;
         Uint32 now = SDL_GetTicks();
         if (now - lastPrint > 1000) {
-            fprintf(stdout, "Zoom %d | Center: lon %.5f lat %.5f | Provider %s\n", zoom, hud_lon, hud_lat, PROVIDERS[provider].type);
+            char buffer[1024];
+            sprintf(buffer, "Zoom %d | Center: lon %.5f lat %.5f | Provider %s", zoom, hud_lon, hud_lat, PROVIDERS[provider].type);
+            printf("%s\n", buffer);
+            SDL_SetWindowTitle(window, buffer);
             lastPrint = now;
         }
 
